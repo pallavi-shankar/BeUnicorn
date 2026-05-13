@@ -1,17 +1,22 @@
 import { Bell, Menu, Sparkles } from "lucide-react";
-import { currentUser } from "../data/demoData";
+import { getActivePortal, getActiveUser, isAdminRole } from "../utils/auth";
 
 export default function Topbar() {
+  const user = getActiveUser();
+  const portal = getActivePortal();
+  const isAdmin = portal === "admin" || isAdminRole(user?.role);
+
   return (
     <header className="sticky top-0 z-30 border-b border-white/10 bg-[#07060a]/70 px-4 py-4 backdrop-blur-2xl lg:ml-72 lg:px-8">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="flex items-center gap-2 text-sm text-yellow-200">
             <Sparkles className="h-4 w-4" />
-            Premium coworking control center
+            {isAdmin ? "Admin operations console" : "Member booking portal"}
           </p>
+
           <h2 className="mt-1 text-xl font-black text-white md:text-2xl">
-            Welcome, {currentUser.name}
+            Welcome, {user?.name || "BeUnicorn User"}
           </h2>
         </div>
 
@@ -27,13 +32,23 @@ export default function Topbar() {
 
           <div className="hidden items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 md:flex">
             <div className="gold-gradient flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-black">
-              AM
+              {user?.name
+                ? user.name
+                    .split(" ")
+                    .map((part) => part[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()
+                : "BU"}
             </div>
+
             <div>
               <p className="text-sm font-semibold text-white">
-                {currentUser.role}
+                {user?.role || "member"}
               </p>
-              <p className="text-xs text-slate-400">{currentUser.company}</p>
+              <p className="text-xs text-slate-400">
+                {isAdmin ? "Admin Side" : "Member Side"}
+              </p>
             </div>
           </div>
         </div>

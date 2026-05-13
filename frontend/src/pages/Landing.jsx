@@ -7,6 +7,7 @@ import {
   Printer,
   ShieldCheck,
   Sparkles,
+  UserPlus,
   Wallet,
   Zap,
 } from "lucide-react";
@@ -14,12 +15,36 @@ import { useNavigate } from "react-router-dom";
 import PremiumCard from "../components/PremiumCard";
 
 const features = [
-  { icon: Wallet, title: "Unified Wallet", text: "Grant, top-up and admin overage credits in one immutable ledger." },
-  { icon: CalendarDays, title: "Smart Bookings", text: "Google Calendar availability, credit lock and automation triggers." },
-  { icon: KeyRound, title: "TTLock Access", text: "BLE eKey, visitor PINs and ghost meeting detection." },
-  { icon: Printer, title: "PaperCut Printing", text: "Enable printing, mirrored balance and post-print wallet charge." },
-  { icon: ShieldCheck, title: "Cashfree KYC", text: "PAN verification, secure payments and webhook-safe processing." },
-  { icon: Zap, title: "IoT Automation", text: "AC, lights, occupancy, CO₂ and lux-based workspace control." },
+  {
+    icon: Wallet,
+    title: "Unified Wallet",
+    text: "Grant, top-up and admin overage credits in one immutable ledger.",
+  },
+  {
+    icon: CalendarDays,
+    title: "Smart Bookings",
+    text: "Members can browse spaces, select slots and book rooms.",
+  },
+  {
+    icon: KeyRound,
+    title: "TTLock Access",
+    text: "BLE eKey, visitor PINs and ghost meeting detection planned.",
+  },
+  {
+    icon: Printer,
+    title: "PaperCut Printing",
+    text: "Print account, mirrored balance and post-print charges planned.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Admin Operations",
+    text: "Admin can manage users, rooms, bookings and workspace operations.",
+  },
+  {
+    icon: Zap,
+    title: "IoT Automation",
+    text: "AC, lights, occupancy, CO₂ and lux-based workspace control planned.",
+  },
 ];
 
 export default function Landing() {
@@ -37,18 +62,28 @@ export default function Landing() {
           <div className="gold-gradient flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-black text-black">
             B
           </div>
+
           <div>
             <h1 className="text-xl font-black">BeUnicorn</h1>
             <p className="text-xs text-slate-400">Jayanagar, Bengaluru</p>
           </div>
         </div>
 
-        <button
-          onClick={() => navigate("/login")}
-          className="rounded-2xl bg-yellow-300 px-5 py-3 font-bold text-black transition hover:scale-105"
-        >
-          Open 
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => navigate("/login")}
+            className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-bold text-white transition hover:bg-white/10"
+          >
+            Login
+          </button>
+
+          <button
+            onClick={() => navigate("/register")}
+            className="rounded-2xl bg-yellow-300 px-5 py-3 font-bold text-black transition hover:scale-105"
+          >
+            Register
+          </button>
+        </div>
       </nav>
 
       <section className="relative z-10 mx-auto grid max-w-7xl gap-10 px-5 py-16 lg:grid-cols-2 lg:items-center lg:py-24">
@@ -68,9 +103,9 @@ export default function Landing() {
             transition={{ delay: 0.1 }}
             className="text-5xl font-black leading-tight md:text-7xl"
           >
-            One app for{" "}
-            <span className="text-gold">access, bookings, wallet</span> and
-            workspace automation.
+            One platform for{" "}
+            <span className="text-gold">members, bookings, admin</span> and
+            workspace operations.
           </motion.h2>
 
           <motion.p
@@ -79,9 +114,9 @@ export default function Landing() {
             transition={{ delay: 0.2 }}
             className="mt-6 max-w-2xl text-lg leading-8 text-slate-300"
           >
-            A luxury web app for BeUnicorn members and operations teams —
-            covering onboarding, payments, printing, TTLock access, IoT controls,
-            notifications and admin workflows.
+            Members can register, browse bookable spaces, create bookings and
+            view their booking history. Admins can manage rooms, users and all
+            workspace operations from one dashboard.
           </motion.p>
 
           <motion.div
@@ -91,19 +126,20 @@ export default function Landing() {
             className="mt-8 flex flex-wrap gap-4"
           >
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/register")}
               className="flex items-center gap-3 rounded-2xl bg-yellow-300 px-7 py-4 font-black text-black shadow-xl shadow-yellow-300/20 transition hover:scale-105"
             >
-              Start Flow
+              <UserPlus className="h-5 w-5" />
+              Register as Member
               <ArrowRight className="h-5 w-5" />
             </button>
 
-            <a
-              href="#features"
+            <button
+              onClick={() => navigate("/login")}
               className="rounded-2xl border border-white/10 bg-white/5 px-7 py-4 font-bold text-white hover:bg-white/10"
             >
-              View Modules
-            </a>
+              Admin / Member Login
+            </button>
           </motion.div>
         </div>
 
@@ -116,9 +152,10 @@ export default function Landing() {
           <div className="rounded-[1.6rem] bg-black/40 p-5">
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-400">Live Member Wallet</p>
-                <h3 className="text-4xl font-black">₹18,450</h3>
+                <p className="text-sm text-slate-400">Current MVP</p>
+                <h3 className="text-3xl font-black">Backend Connected</h3>
               </div>
+
               <div className="rounded-2xl bg-emerald-400/10 px-4 py-2 text-sm font-bold text-emerald-300">
                 Active
               </div>
@@ -126,10 +163,10 @@ export default function Landing() {
 
             <div className="grid gap-4">
               {[
-                "Meeting Room booked at 11:00 AM",
-                "TTLock eKey active for office floor",
-                "PaperCut printing enabled",
-                "AC pre-cool scheduled at 22°C",
+                "Member registration and login",
+                "Admin room and user management",
+                "Real MongoDB workspace rooms",
+                "Room booking and cancellation",
               ].map((item) => (
                 <div
                   key={item}
@@ -143,10 +180,10 @@ export default function Landing() {
         </motion.div>
       </section>
 
-      <section id="features" className="relative z-10 mx-auto max-w-7xl px-5 pb-20">
+      <section className="relative z-10 mx-auto max-w-7xl px-5 pb-20">
         <div className="mb-8 text-center">
-          <p className="text-sm font-bold text-yellow-200">PRD Modules</p>
-          <h2 className="mt-2 text-4xl font-black">Everything in one flow</h2>
+          <p className="text-sm font-bold text-yellow-200">MVP Modules</p>
+          <h2 className="mt-2 text-4xl font-black">User side + Admin side</h2>
         </div>
 
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -169,12 +206,11 @@ export default function Landing() {
       <section className="relative z-10 mx-auto max-w-7xl px-5 pb-20">
         <div className="glass rounded-[2rem] p-8 text-center">
           <Building2 className="mx-auto mb-4 h-10 w-10 text-yellow-200" />
-          <h2 className="text-3xl font-black">Message</h2>
+          <h2 className="text-3xl font-black">Current Working Flow</h2>
           <p className="mx-auto mt-4 max-w-3xl text-slate-300">
-            BeUnicorn becomes a coworking operating system where every member
-            action — booking, unlocking, printing, payment, refund, no-show and
-            IoT trigger — flows through one wallet ledger and one backend
-            orchestration layer.
+            Admin adds and manages spaces. Members register, browse those
+            spaces, select date and time, create bookings, and view/cancel their
+            own bookings.
           </p>
         </div>
       </section>
