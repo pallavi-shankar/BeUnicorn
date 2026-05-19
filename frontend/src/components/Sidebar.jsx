@@ -1,5 +1,7 @@
 import {
+  BadgeCheck,
   Bell,
+  Building2,
   CalendarDays,
   CreditCard,
   Home,
@@ -10,6 +12,7 @@ import {
   Route,
   ShieldCheck,
   SlidersHorizontal,
+  Users,
   Wallet,
   Zap,
 } from "lucide-react";
@@ -25,15 +28,19 @@ const memberLinks = [
   { label: "Dashboard", path: "/member", icon: Home },
   { label: "Book Spaces", path: "/member/bookings", icon: CalendarDays },
   { label: "Wallet", path: "/member/wallet", icon: Wallet },
+  { label: "Verification", path: "/member/verification", icon: BadgeCheck },
   { label: "Notifications", path: "/member/notifications", icon: Bell },
 ];
 
 const adminLinks = [
   { label: "Admin Console", path: "/admin", icon: ShieldCheck },
   { label: "Analytics Dashboard", path: "/admin/dashboard", icon: Home },
-  { label: "Bookings", path: "/admin/bookings", icon: CalendarDays },
-  { label: "Onboarding", path: "/admin/onboarding", icon: Route },
+  { label: "Users", path: "/admin/users", icon: Users },
+  { label: "Rooms", path: "/admin/rooms", icon: Building2 },
+  { label: "Companies", path: "/admin/companies", icon: Building2 },
+  { label: "Booking Approvals", path: "/admin/bookings", icon: CalendarDays },
   { label: "Wallet", path: "/admin/wallet", icon: Wallet },
+  { label: "Onboarding", path: "/admin/onboarding", icon: Route },
   { label: "Access", path: "/admin/access", icon: KeyRound },
   { label: "Printing", path: "/admin/printing", icon: Printer },
   { label: "Payments & KYC", path: "/admin/payments", icon: CreditCard },
@@ -54,7 +61,7 @@ export default function Sidebar() {
 
   const logout = () => {
     logoutActivePortal();
-    navigate("/login");
+    navigate(isAdmin ? "/admin" : "/login");
   };
 
   return (
@@ -82,7 +89,7 @@ export default function Sidebar() {
         </span>
       </div>
 
-      <nav className="space-y-2">
+      <nav className="space-y-2 overflow-y-auto pb-24">
         {links.map((item) => {
           const Icon = item.icon;
 
@@ -108,7 +115,7 @@ export default function Sidebar() {
 
       <button
         onClick={logout}
-        className="absolute bottom-5 left-5 right-5 flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm text-slate-300 hover:bg-red-500/10 hover:text-red-300"
+        className="absolute bottom-5 left-5 right-5 flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-slate-300 hover:bg-red-500/10 hover:text-red-300"
       >
         <LogOut className="h-4 w-4" />
         Logout {isAdmin ? "Admin" : "Member"}

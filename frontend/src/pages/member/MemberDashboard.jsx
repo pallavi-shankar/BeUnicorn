@@ -1,20 +1,28 @@
 import {
-  Building2,
+  Bell,
   CalendarDays,
   CheckCircle2,
   Clock,
   IndianRupee,
-  KeyRound,
   Loader2,
   RefreshCw,
-  User,
-  Users,
+  Wallet,
   XCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import AnimatedPage from "../components/AnimatedPage";
-import PremiumCard from "../components/PremiumCard";
-import api from "../utils/api";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import AnimatedPage from "../../components/AnimatedPage";
+import PremiumCard from "../../components/PremiumCard";
+import api from "../../utils/api";
+import { getMemberUser } from "../../utils/auth";
+
+const statusClass = (status) => {
+  if (status === "confirmed") return "bg-emerald-400/10 text-emerald-300";
+  if (status === "pending") return "bg-yellow-300/10 text-yellow-200";
+  if (status === "rejected") return "bg-red-500/10 text-red-300";
+  if (status === "cancelled") return "bg-slate-500/10 text-slate-300";
+  return "bg-white/10 text-white";
+};
 
 const formatDateTime = (value) => {
   if (!value) return "-";
@@ -28,69 +36,32 @@ const formatDateTime = (value) => {
   });
 };
 
-const formatRoomType = (type) => {
-  return String(type || "")
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-};
+export default function MemberDashboard() {
+  const user = getMemberUser();
 
-export default function Dashboard() {
-  const [profile, setProfile] = useState(null);
-  const [stats, setStats] = useState(null);
+  const [walletBalance, setWalletBalance] = useState(0);
   const [bookings, setBookings] = useState([]);
-  const [rooms, setRooms] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
-  const fetchDashboardData = async () => {
+  const fetchDashboard = async () => {
     try {
       setLoading(true);
       setMessage("");
 
-      const profileRes = await api.get("/auth/me");
-      const loggedInUser = profileRes.data.user;
-      const isAdmin = ["admin", "cabin_admin"].includes(loggedInUser?.role);
+      const [walletRes, bookingsRes, notificationsRes] = await Promise.all([
+        api.get("/wallet/my"),
+        api.get("/bookings/my"),
+        api.get("/notifications/my"),
+      ]);
 
-      setProfile(loggedInUser);
-
-      if (isAdmin) {
-        const [statsRes, bookingsRes, usersRes, roomsRes] = await Promise.all([
-          api.get("/admin/stats"),
-          api.get("/admin/bookings"),
-          api.get("/admin/users"),
-          api.get("/admin/rooms"),
-        ]);
-
-        setStats(statsRes.data.stats || {});
-        setBookings(bookingsRes.data.bookings || []);
-        setUsers(usersRes.data.users || []);
-        setRooms(roomsRes.data.rooms || []);
-      } else {
-        const [bookingsRes, roomsRes] = await Promise.all([
-          api.get("/bookings/my"),
-          api.get("/workspace/rooms"),
-        ]);
-
-        const userBookings = bookingsRes.data.bookings || [];
-
-        setBookings(userBookings);
-        setRooms(roomsRes.data.rooms || []);
-
-        setStats({
-          totalBookings: userBookings.length,
-          confirmedBookings: userBookings.filter(
-            (item) => item.status === "confirmed"
-          ).length,
-          cancelledBookings: userBookings.filter(
-            (item) => item.status === "cancelled"
-          ).length,
-          totalAmount: userBookings
-            .filter((item) => item.status === "confirmed")
-            .reduce((sum, item) => sum + Number(item.amount || 0), 0),
-        });
-      }
+      setWalletBalance(walletRes.data.balance || 0);
+      setBookings(bookingsRes.data.bookings || []);
+      setNotifications((notificationsRes.data.notifications || []).slice(0, 5));
+      setUnreadCount(notificationsRes.data.unreadCount || 0);
     } catch (error) {
       setMessage(
         error?.response?.data?.message || "Failed to load dashboard data."
@@ -101,94 +72,47 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboard();
   }, []);
+
+  const stats = useMemo(() => {
+    return {
+      total: bookings.length,
+      pending: bookings.filter((item) => item.status === "pending").length,
+      confirmed: bookings.filter((item) => item.status === "confirmed").length,
+      cancelled: bookings.filter((item) => item.status === "cancelled").length,
+      rejected: bookings.filter((item) => item.status === "rejected").length,
+    };
+  }, [bookings]);
 
   if (loading) {
     return (
       <AnimatedPage>
         <div className="flex min-h-[60vh] items-center justify-center text-slate-300">
           <Loader2 className="mr-3 h-6 w-6 animate-spin text-yellow-200" />
-          Loading dashboard...
+          Loading member dashboard...
         </div>
       </AnimatedPage>
     );
   }
 
-  const isAdmin = ["admin", "cabin_admin"].includes(profile?.role);
-
-  const adminCards = [
-    {
-      label: "Registered Users",
-      value: stats?.totalUsers || 0,
-      icon: Users,
-      sub: "Total user accounts",
-    },
-    {
-      label: "Active Rooms",
-      value: stats?.totalRooms || 0,
-      icon: Building2,
-      sub: "Bookable spaces",
-    },
-    {
-      label: "Total Bookings",
-      value: stats?.totalBookings || 0,
-      icon: CalendarDays,
-      sub: `${stats?.confirmedBookings || 0} confirmed`,
-    },
-    {
-      label: "Revenue",
-      value: `₹${Number(stats?.totalRevenue || 0).toLocaleString("en-IN")}`,
-      icon: IndianRupee,
-      sub: "Confirmed bookings",
-    },
-  ];
-
-  const memberCards = [
-    {
-      label: "My Bookings",
-      value: stats?.totalBookings || 0,
-      icon: CalendarDays,
-      sub: "All bookings created by you",
-    },
-    {
-      label: "Confirmed",
-      value: stats?.confirmedBookings || 0,
-      icon: CheckCircle2,
-      sub: "Active upcoming bookings",
-    },
-    {
-      label: "Cancelled",
-      value: stats?.cancelledBookings || 0,
-      icon: XCircle,
-      sub: "Cancelled bookings",
-    },
-    {
-      label: "Total Spend",
-      value: `₹${Number(stats?.totalAmount || 0).toLocaleString("en-IN")}`,
-      icon: IndianRupee,
-      sub: "Confirmed booking amount",
-    },
-  ];
-
-  const statCards = isAdmin ? adminCards : memberCards;
-
   return (
     <AnimatedPage>
       <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
         <div>
-          <h1 className="text-3xl font-black text-white">
-            {isAdmin ? "Admin Analytics Dashboard" : "My Member Dashboard"}
+          <p className="text-sm font-bold text-yellow-200">
+            BeUnicorn Member Portal
+          </p>
+          <h1 className="mt-2 text-3xl font-black text-white">
+            Welcome, {user?.name || "Member"}
           </h1>
           <p className="mt-2 text-slate-400">
-            {isAdmin
-              ? "Track registered users, rooms, bookings, and operational analytics."
-              : "View your profile, bookings, booked rooms, and available BeUnicorn spaces."}
+            Manage bookings, wallet balance, and workspace updates.
           </p>
         </div>
 
         <button
-          onClick={fetchDashboardData}
+          onClick={fetchDashboard}
           className="flex w-fit items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-bold text-white hover:bg-white/10"
         >
           <RefreshCw className="h-4 w-4" />
@@ -202,175 +126,154 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {statCards.map((card) => {
-          const Icon = card.icon;
-
-          return (
-            <PremiumCard key={card.label}>
-              <Icon className="mb-4 h-8 w-8 text-yellow-200" />
-              <p className="text-sm text-slate-400">{card.label}</p>
-              <h2 className="mt-2 text-3xl font-black text-white">
-                {card.value}
-              </h2>
-              <p className="mt-2 text-xs text-slate-500">{card.sub}</p>
-            </PremiumCard>
-          );
-        })}
-      </div>
-
-      <div className="mt-6 grid gap-6 xl:grid-cols-3">
-        <PremiumCard className="xl:col-span-1">
-          <div className="mb-5 flex items-center gap-3">
-            <User className="h-6 w-6 text-yellow-200" />
-            <h2 className="text-xl font-black text-white">
-              {isAdmin ? "Admin Profile" : "My Profile"}
-            </h2>
-          </div>
-
-          <div className="space-y-3">
-            <div className="rounded-2xl bg-white/5 p-4">
-              <p className="text-xs text-slate-500">Name</p>
-              <p className="mt-1 font-bold text-white">{profile?.name}</p>
-            </div>
-
-            <div className="rounded-2xl bg-white/5 p-4">
-              <p className="text-xs text-slate-500">Email</p>
-              <p className="mt-1 font-bold text-white">{profile?.email}</p>
-            </div>
-
-            <div className="rounded-2xl bg-white/5 p-4">
-              <p className="text-xs text-slate-500">Phone</p>
-              <p className="mt-1 font-bold text-white">
-                {profile?.phone || "-"}
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-white/5 p-4">
-              <p className="text-xs text-slate-500">Role</p>
-              <p className="mt-1 font-bold text-yellow-200">
-                {profile?.role}
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-white/5 p-4">
-              <p className="text-xs text-slate-500">Company</p>
-              <p className="mt-1 font-bold text-white">
-                {profile?.companyName || "Not added"}
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-white/5 p-4">
-              <p className="text-xs text-slate-500">Joined</p>
-              <p className="mt-1 font-bold text-white">
-                {formatDateTime(profile?.createdAt)}
-              </p>
-            </div>
-          </div>
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+        <PremiumCard className="xl:col-span-2">
+          <Wallet className="mb-4 h-8 w-8 text-yellow-200" />
+          <p className="text-sm text-slate-400">Wallet Balance</p>
+          <h2 className="mt-2 text-4xl font-black text-white">
+            ₹{Number(walletBalance || 0).toLocaleString("en-IN")}
+          </h2>
+          <Link
+            to="/member/wallet"
+            className="mt-5 inline-block rounded-2xl bg-yellow-300 px-5 py-3 text-sm font-black text-black"
+          >
+            View Wallet
+          </Link>
         </PremiumCard>
 
-        <PremiumCard className="xl:col-span-2">
-          <div className="mb-5 flex items-center gap-3">
-            <CalendarDays className="h-6 w-6 text-yellow-200" />
+        <PremiumCard>
+          <CalendarDays className="mb-4 h-8 w-8 text-yellow-200" />
+          <p className="text-sm text-slate-400">Total Bookings</p>
+          <h2 className="mt-2 text-3xl font-black text-white">
+            {stats.total}
+          </h2>
+        </PremiumCard>
+
+        <PremiumCard>
+          <Clock className="mb-4 h-8 w-8 text-yellow-200" />
+          <p className="text-sm text-slate-400">Pending</p>
+          <h2 className="mt-2 text-3xl font-black text-white">
+            {stats.pending}
+          </h2>
+        </PremiumCard>
+
+        <PremiumCard>
+          <CheckCircle2 className="mb-4 h-8 w-8 text-emerald-300" />
+          <p className="text-sm text-slate-400">Confirmed</p>
+          <h2 className="mt-2 text-3xl font-black text-white">
+            {stats.confirmed}
+          </h2>
+        </PremiumCard>
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <PremiumCard>
+          <div className="mb-5 flex items-center justify-between">
             <div>
               <h2 className="text-xl font-black text-white">
-                {isAdmin ? "Recent Bookings" : "My Booking Details"}
+                Recent Bookings
               </h2>
-              <p className="text-sm text-slate-400">
-                {isAdmin
-                  ? "Latest booking activity from all users."
-                  : "All rooms booked by this logged-in member."}
+              <p className="mt-1 text-sm text-slate-400">
+                Latest booking requests and status.
               </p>
             </div>
+
+            <Link
+              to="/member/bookings"
+              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white hover:bg-white/10"
+            >
+              View All
+            </Link>
           </div>
 
           {bookings.length === 0 ? (
             <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center text-slate-400">
-              No bookings found.
+              No bookings yet.
             </div>
           ) : (
-            <div className="max-h-[560px] space-y-4 overflow-y-auto pr-1">
-              {bookings.slice(0, isAdmin ? 8 : bookings.length).map((booking) => (
+            <div className="space-y-4">
+              {bookings.slice(0, 5).map((booking) => (
                 <div
                   key={booking._id}
-                  className="rounded-3xl border border-white/10 bg-white/5 p-5"
+                  className="rounded-3xl border border-white/10 bg-white/5 p-4"
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wide text-yellow-200">
-                        {formatRoomType(booking.roomId?.type)}
-                      </p>
-
-                      <h3 className="mt-1 text-xl font-black text-white">
+                      <h3 className="font-black text-white">
                         {booking.roomId?.name || "Room"}
                       </h3>
-
-                      {isAdmin && (
-                        <p className="mt-1 text-sm text-slate-400">
-                          User: {booking.userId?.name || "-"} •{" "}
-                          {booking.userId?.email || "-"}
-                        </p>
-                      )}
-
-                      <p className="mt-2 text-sm text-slate-400">
-                        {booking.roomId?.buildingId?.name || "BeUnicorn"} •{" "}
-                        {booking.roomId?.floorId?.name || "Floor"}
+                      <p className="mt-1 text-sm text-slate-400">
+                        {booking.bookingDate} • {booking.startTime} -{" "}
+                        {booking.endTime}
+                      </p>
+                      <p className="mt-1 text-sm text-yellow-200">
+                        ₹{booking.amount}
                       </p>
                     </div>
 
                     <span
-                      className={`rounded-full px-3 py-1 text-xs font-bold ${
-                        booking.status === "confirmed"
-                          ? "bg-emerald-400/10 text-emerald-300"
-                          : "bg-red-400/10 text-red-300"
-                      }`}
+                      className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass(
+                        booking.status
+                      )}`}
                     >
                       {booking.status}
                     </span>
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </PremiumCard>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-4">
-                    <div className="rounded-2xl bg-black/30 p-3">
-                      <CalendarDays className="mb-2 h-4 w-4 text-yellow-200" />
-                      <p className="text-xs text-slate-500">Date</p>
-                      <p className="text-sm font-bold text-white">
-                        {booking.bookingDate}
+        <PremiumCard>
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-black text-white">
+                Recent Notifications
+              </h2>
+              <p className="mt-1 text-sm text-slate-400">
+                You have {unreadCount} unread notification
+                {unreadCount === 1 ? "" : "s"}.
+              </p>
+            </div>
+
+            <Link
+              to="/member/notifications"
+              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white hover:bg-white/10"
+            >
+              View All
+            </Link>
+          </div>
+
+          {notifications.length === 0 ? (
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center text-slate-400">
+              No notifications yet.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {notifications.map((notification) => (
+                <div
+                  key={notification._id}
+                  className={`rounded-3xl border p-4 ${
+                    notification.isRead
+                      ? "border-white/10 bg-white/5"
+                      : "border-yellow-300/30 bg-yellow-300/10"
+                  }`}
+                >
+                  <div className="flex gap-3">
+                    <Bell className="mt-1 h-5 w-5 shrink-0 text-yellow-200" />
+                    <div>
+                      <h3 className="font-black text-white">
+                        {notification.title}
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-400">
+                        {notification.message}
                       </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-black/30 p-3">
-                      <Clock className="mb-2 h-4 w-4 text-yellow-200" />
-                      <p className="text-xs text-slate-500">Time</p>
-                      <p className="text-sm font-bold text-white">
-                        {booking.startTime} - {booking.endTime}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-black/30 p-3">
-                      <Users className="mb-2 h-4 w-4 text-yellow-200" />
-                      <p className="text-xs text-slate-500">Attendees</p>
-                      <p className="text-sm font-bold text-white">
-                        {booking.attendeesCount || 1}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-black/30 p-3">
-                      <IndianRupee className="mb-2 h-4 w-4 text-yellow-200" />
-                      <p className="text-xs text-slate-500">Amount</p>
-                      <p className="text-sm font-bold text-yellow-200">
-                        ₹{booking.amount}
+                      <p className="mt-2 text-xs text-slate-500">
+                        {formatDateTime(notification.createdAt)}
                       </p>
                     </div>
                   </div>
-
-                  {booking.purpose && (
-                    <div className="mt-4 rounded-2xl bg-white/5 p-4">
-                      <p className="text-xs text-slate-500">Purpose</p>
-                      <p className="mt-1 text-sm text-slate-300">
-                        {booking.purpose}
-                      </p>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -378,113 +281,37 @@ export default function Dashboard() {
         </PremiumCard>
       </div>
 
-      {isAdmin && (
-        <PremiumCard className="mt-6">
-          <div className="mb-5 flex items-center gap-3">
-            <Users className="h-6 w-6 text-yellow-200" />
-            <div>
-              <h2 className="text-xl font-black text-white">
-                Recent Registered Users
-              </h2>
-              <p className="text-sm text-slate-400">
-                Latest users who registered on the platform.
-              </p>
-            </div>
-          </div>
+      <div className="mt-6 grid gap-5 md:grid-cols-3">
+        <Link to="/member/bookings">
+          <PremiumCard>
+            <CalendarDays className="mb-4 h-8 w-8 text-yellow-200" />
+            <h3 className="text-xl font-black text-white">Book a Space</h3>
+            <p className="mt-2 text-sm text-slate-400">
+              Browse meeting rooms, studios, cabins and workspaces.
+            </p>
+          </PremiumCard>
+        </Link>
 
-          {users.length === 0 ? (
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center text-slate-400">
-              No users found.
-            </div>
-          ) : (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {users.slice(0, 8).map((user) => (
-                <div
-                  key={user.id}
-                  className="rounded-3xl border border-white/10 bg-white/5 p-5"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-black text-white">{user.name}</h3>
-                      <p className="mt-1 text-sm text-slate-400">
-                        {user.email}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {user.companyName || "No company"} • {user.role}
-                      </p>
-                    </div>
+        <Link to="/member/wallet">
+          <PremiumCard>
+            <IndianRupee className="mb-4 h-8 w-8 text-yellow-200" />
+            <h3 className="text-xl font-black text-white">Wallet Ledger</h3>
+            <p className="mt-2 text-sm text-slate-400">
+              Track credits, booking deductions and refunds.
+            </p>
+          </PremiumCard>
+        </Link>
 
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-bold ${
-                        user.status === "active"
-                          ? "bg-emerald-400/10 text-emerald-300"
-                          : user.status === "blocked"
-                          ? "bg-red-400/10 text-red-300"
-                          : "bg-yellow-300/10 text-yellow-200"
-                      }`}
-                    >
-                      {user.status}
-                    </span>
-                  </div>
-
-                  <p className="mt-4 text-xs text-slate-500">
-                    Registered: {formatDateTime(user.createdAt)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </PremiumCard>
-      )}
-
-      {!isAdmin && (
-        <PremiumCard className="mt-6">
-          <div className="mb-5 flex items-center gap-3">
-            <Building2 className="h-6 w-6 text-yellow-200" />
-            <div>
-              <h2 className="text-xl font-black text-white">
-                Available BeUnicorn Spaces
-              </h2>
-              <p className="text-sm text-slate-400">
-                Rooms available for booking by this member.
-              </p>
-            </div>
-          </div>
-
-          {rooms.length === 0 ? (
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center text-slate-400">
-              No rooms available.
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {rooms.slice(0, 6).map((room) => (
-                <div
-                  key={room._id}
-                  className="overflow-hidden rounded-3xl border border-white/10 bg-white/5"
-                >
-                  <img
-                    src={room.imageUrl}
-                    alt={room.name}
-                    className="h-36 w-full object-cover"
-                  />
-
-                  <div className="p-4">
-                    <p className="text-xs font-bold uppercase tracking-wide text-yellow-200">
-                      {formatRoomType(room.type)}
-                    </p>
-
-                    <h3 className="mt-1 font-black text-white">{room.name}</h3>
-
-                    <p className="mt-2 text-sm text-slate-400">
-                      Capacity: {room.capacity} • ₹{room.pricePerHour}/hr
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </PremiumCard>
-      )}
+        <Link to="/member/notifications">
+          <PremiumCard>
+            <XCircle className="mb-4 h-8 w-8 text-yellow-200" />
+            <h3 className="text-xl font-black text-white">Updates</h3>
+            <p className="mt-2 text-sm text-slate-400">
+              View approval, rejection and cancellation updates.
+            </p>
+          </PremiumCard>
+        </Link>
+      </div>
     </AnimatedPage>
   );
 }

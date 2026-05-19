@@ -7,6 +7,9 @@ import authRoutes from "./src/routes/auth.routes.js";
 import workspaceRoutes from "./src/routes/workspace.routes.js";
 import bookingRoutes from "./src/routes/booking.routes.js";
 import adminRoutes from "./src/routes/admin.routes.js";
+import notificationRoutes from "./src/routes/notification.routes.js";
+import walletRoutes from "./src/routes/wallet.routes.js";
+import companyRoutes from "./src/routes/company.routes.js";
 
 dotenv.config();
 
@@ -43,11 +46,16 @@ app.use("/api/auth", authRoutes);
 app.use("/api/workspace", workspaceRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/wallet", walletRoutes);
+app.use("/api/companies", companyRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: "API route not found",
+    path: req.originalUrl,
+    method: req.method,
   });
 });
 

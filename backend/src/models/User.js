@@ -7,7 +7,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Name is required"],
       trim: true,
-      minlength: [2, "Name must be at least 2 characters"],
     },
 
     email: {
@@ -16,13 +15,12 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
     },
 
     phone: {
       type: String,
+      required: [true, "Phone number is required"],
       trim: true,
-      default: "",
     },
 
     password: {
@@ -38,20 +36,33 @@ const userSchema = new mongoose.Schema(
       default: "member",
     },
 
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      default: null,
+    },
+
     companyName: {
       type: String,
-      trim: true,
       default: "",
+      trim: true,
     },
 
-    isEmailVerified: {
-      type: Boolean,
-      default: true,
+    membershipStatus: {
+      type: String,
+      enum: ["none", "pending", "approved", "rejected"],
+      default: "none",
     },
 
-    isPhoneVerified: {
-      type: Boolean,
-      default: true,
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    approvedAt: {
+      type: Date,
+      default: null,
     },
 
     status: {
@@ -60,10 +71,59 @@ const userSchema = new mongoose.Schema(
       default: "active",
     },
 
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    emailVerificationToken: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
+    emailVerificationExpires: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+
+    emailVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+
+    isPhoneVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    phoneOtpHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
+    phoneOtpExpires: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+
+    phoneOtpLastSentAt: {
+      type: Date,
+      default: null,
+    },
+
+    phoneVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+
     kycStatus: {
       type: String,
-      enum: ["not_started", "pending", "verified", "rejected"],
-      default: "not_started",
+      enum: ["pending", "verified", "rejected", "not_required"],
+      default: "pending",
     },
   },
   {
@@ -71,14 +131,16 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-userSchema.pre("save", async function () {
-  if (!this.isModified("password")) return;
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+
+  next();
 });
 
-userSchema.methods.comparePassword = async function (enteredPassword) {
+userSchema.methods.matchPassword = async function (enteredPassword) {
   return bcrypt.compare(enteredPassword, this.password);
 };
 

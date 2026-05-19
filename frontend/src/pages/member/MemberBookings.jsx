@@ -3,15 +3,16 @@ import {
   Clock,
   DoorOpen,
   Loader2,
+  MailWarning,
   Snowflake,
   Users,
   Wallet,
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import AnimatedPage from "../components/AnimatedPage";
-import PremiumCard from "../components/PremiumCard";
-import api from "../utils/api";
+import AnimatedPage from "../../components/AnimatedPage";
+import PremiumCard from "../../components/PremiumCard";
+import api from "../../utils/api";
 
 const formatRoomType = (type) => {
   return String(type || "")
@@ -91,7 +92,8 @@ const statusClass = (status) => {
   return "bg-white/10 text-white";
 };
 
-export default function Bookings() {
+export default function MemberBookings() {
+  const [profile, setProfile] = useState(null);
   const [rooms, setRooms] = useState([]);
   const [myBookings, setMyBookings] = useState([]);
   const [selectedType, setSelectedType] = useState("");
@@ -108,8 +110,14 @@ export default function Bookings() {
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [loadingBookings, setLoadingBookings] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [resending, setResending] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState("");
+
+  const fetchProfile = async () => {
+    const response = await api.get("/auth/me");
+    setProfile(response.data.user);
+  };
 
   const fetchRooms = async () => {
     try {
@@ -149,11 +157,41 @@ export default function Bookings() {
   }, [selectedType]);
 
   useEffect(() => {
+    fetchProfile();
     fetchMyBookings();
   }, []);
 
+  const resendVerificationEmail = async () => {
+    try {
+      setResending(true);
+      setMessage("");
+      setSuccess("");
+
+      const response = await api.post("/auth/resend-verification-email");
+
+      setSuccess(response.data.message || "Verification email sent.");
+
+      if (response.data?.emailVerification?.verificationUrl) {
+        setSuccess(
+          `${response.data.message} Dev link: ${response.data.emailVerification.verificationUrl}`
+        );
+      }
+    } catch (error) {
+      setMessage(
+        error?.response?.data?.message || "Failed to resend verification email."
+      );
+    } finally {
+      setResending(false);
+    }
+  };
+
   const handleCreateBooking = async (e) => {
     e.preventDefault();
+
+    if (!profile?.isEmailVerified) {
+      setMessage("Please verify your email before booking a space.");
+      return;
+    }
 
     if (!selectedRoom) {
       setMessage("Please select a room first.");
@@ -229,6 +267,32 @@ export default function Bookings() {
         </p>
       </div>
 
+      {!profile?.isEmailVerified && (
+        <div className="mb-5 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 p-4">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+            <div className="flex gap-3">
+              <MailWarning className="mt-1 h-6 w-6 shrink-0 text-yellow-200" />
+              <div>
+                <h3 className="font-black text-yellow-200">
+                  Email verification required
+                </h3>
+                <p className="mt-1 text-sm text-slate-300">
+                  Please verify your email before submitting a booking request.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={resendVerificationEmail}
+              disabled={resending}
+              className="rounded-2xl bg-yellow-300 px-5 py-3 text-sm font-black text-black disabled:opacity-60"
+            >
+              {resending ? "Sending..." : "Resend Email"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {message && (
         <div className="mb-5 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-300">
           {message}
@@ -236,7 +300,7 @@ export default function Bookings() {
       )}
 
       {success && (
-        <div className="mb-5 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-300">
+        <div className="mb-5 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-300 break-all">
           {success}
         </div>
       )}
@@ -465,11 +529,15 @@ export default function Bookings() {
 
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || !profile?.isEmailVerified}
                   className="flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-300 px-5 py-4 font-black text-black disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {submitting && <Loader2 className="h-5 w-5 animate-spin" />}
-                  {submitting ? "Submitting..." : "Submit Booking Request"}
+                  {!profile?.isEmailVerified
+                    ? "Verify Email First"
+                    : submitting
+                    ? "Submitting..."
+                    : "Submit Booking Request"}
                 </button>
               </div>
             </form>
@@ -590,7 +658,7 @@ export default function Bookings() {
 
         <div className="mt-6 grid gap-4 md:grid-cols-4">
           {[
-            { icon: Wallet, title: "Wallet Later" },
+            { icon: Wallet, title: "Wallet Check" },
             { icon: CalendarDays, title: "Pending Approval" },
             { icon: DoorOpen, title: "Access After Approval" },
             { icon: Snowflake, title: "IoT Later" },

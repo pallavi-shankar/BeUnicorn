@@ -9,10 +9,16 @@ import MemberDashboard from "./pages/member/MemberDashboard";
 import MemberBookings from "./pages/member/MemberBookings";
 import MemberWallet from "./pages/member/MemberWallet";
 import MemberNotifications from "./pages/member/MemberNotifications";
+import MemberVerification from "./pages/member/MemberVerification";
 
+import AdminLogin from "./pages/admin/AdminLogin";
 import AdminConsole from "./pages/admin/AdminConsole";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminBookings from "./pages/admin/AdminBookings";
+import AdminWallet from "./pages/admin/AdminWallet";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminRooms from "./pages/admin/AdminRooms";
+import AdminCompanies from "./pages/admin/AdminCompanies";
 
 import Access from "./pages/Access";
 import Integrations from "./pages/Integrations";
@@ -30,16 +36,23 @@ import {
   isAdminRole,
 } from "./utils/auth";
 
+function AdminGate({ children }) {
+  const token = getAdminToken();
+  const user = getAdminUser();
+
+  if (!token || !isAdminRole(user?.role)) {
+    return <AdminLogin />;
+  }
+
+  return <Layout portal="admin">{children}</Layout>;
+}
+
 function AdminOnly({ children }) {
   const token = getAdminToken();
   const user = getAdminUser();
 
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (!isAdminRole(user?.role)) {
-    return <Navigate to="/login" replace />;
+  if (!token || !isAdminRole(user?.role)) {
+    return <Navigate to="/admin" replace />;
   }
 
   return <Layout portal="admin">{children}</Layout>;
@@ -63,12 +76,10 @@ function MemberOnly({ children }) {
 export default function App() {
   return (
     <Routes>
-      {/* PUBLIC */}
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* MEMBER SIDE */}
       <Route
         path="/member"
         element={
@@ -105,13 +116,21 @@ export default function App() {
         }
       />
 
-      {/* ADMIN SIDE */}
+      <Route
+        path="/member/verification"
+        element={
+          <MemberOnly>
+            <MemberVerification />
+          </MemberOnly>
+        }
+      />
+
       <Route
         path="/admin"
         element={
-          <AdminOnly>
+          <AdminGate>
             <AdminConsole />
-          </AdminOnly>
+          </AdminGate>
         }
       />
 
@@ -120,6 +139,33 @@ export default function App() {
         element={
           <AdminOnly>
             <AdminDashboard />
+          </AdminOnly>
+        }
+      />
+
+      <Route
+        path="/admin/users"
+        element={
+          <AdminOnly>
+            <AdminUsers />
+          </AdminOnly>
+        }
+      />
+
+      <Route
+        path="/admin/rooms"
+        element={
+          <AdminOnly>
+            <AdminRooms />
+          </AdminOnly>
+        }
+      />
+
+      <Route
+        path="/admin/companies"
+        element={
+          <AdminOnly>
+            <AdminCompanies />
           </AdminOnly>
         }
       />
@@ -134,19 +180,19 @@ export default function App() {
       />
 
       <Route
-        path="/admin/onboarding"
+        path="/admin/wallet"
         element={
           <AdminOnly>
-            <Onboarding />
+            <AdminWallet />
           </AdminOnly>
         }
       />
 
       <Route
-        path="/admin/wallet"
+        path="/admin/onboarding"
         element={
           <AdminOnly>
-            <MemberWallet />
+            <Onboarding />
           </AdminOnly>
         }
       />
@@ -214,10 +260,17 @@ export default function App() {
         }
       />
 
-      {/* OLD ROUTE SUPPORT */}
       <Route path="/app" element={<Navigate to="/member" replace />} />
-      <Route path="/app/bookings" element={<Navigate to="/member/bookings" replace />} />
+      <Route
+        path="/app/bookings"
+        element={<Navigate to="/member/bookings" replace />}
+      />
       <Route path="/app/admin" element={<Navigate to="/admin" replace />} />
+      <Route path="/app/wallet" element={<Navigate to="/member/wallet" replace />} />
+      <Route
+        path="/app/notifications"
+        element={<Navigate to="/member/notifications" replace />}
+      />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

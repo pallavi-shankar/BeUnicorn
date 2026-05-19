@@ -8,14 +8,14 @@ export const isAdminRole = (role) => {
   return ["admin", "cabin_admin"].includes(role);
 };
 
-export const saveAuthSession = (user, token) => {
-  if (isAdminRole(user?.role)) {
-    localStorage.setItem(ADMIN_TOKEN_KEY, token);
-    localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(user));
-  } else {
-    localStorage.setItem(MEMBER_TOKEN_KEY, token);
-    localStorage.setItem(MEMBER_USER_KEY, JSON.stringify(user));
-  }
+export const saveAdminSession = (user, token) => {
+  localStorage.setItem(ADMIN_TOKEN_KEY, token);
+  localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(user));
+};
+
+export const saveMemberSession = (user, token) => {
+  localStorage.setItem(MEMBER_TOKEN_KEY, token);
+  localStorage.setItem(MEMBER_USER_KEY, JSON.stringify(user));
 };
 
 export const getAdminToken = () => {
@@ -57,7 +57,7 @@ export const getActiveToken = () => {
   if (portal === "admin") return getAdminToken();
   if (portal === "member") return getMemberToken();
 
-  return getAdminToken() || getMemberToken();
+  return getMemberToken() || getAdminToken();
 };
 
 export const getActiveUser = () => {
@@ -66,7 +66,10 @@ export const getActiveUser = () => {
   if (portal === "admin") return getAdminUser();
   if (portal === "member") return getMemberUser();
 
-  return getAdminUser()?.id ? getAdminUser() : getMemberUser();
+  const memberUser = getMemberUser();
+  const adminUser = getAdminUser();
+
+  return memberUser?._id || memberUser?.id ? memberUser : adminUser;
 };
 
 export const logoutAdmin = () => {

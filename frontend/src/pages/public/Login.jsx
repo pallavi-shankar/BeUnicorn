@@ -1,24 +1,29 @@
+import { GoogleLogin } from "@react-oauth/google";
 import { motion } from "framer-motion";
 import { ArrowRight, LockKeyhole, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import api from "../utils/api";
-import { isAdminRole, saveAuthSession } from "../utils/auth";
+import api from "../../utils/api";
+import { isAdminRole, saveMemberSession } from "../../utils/auth";
+
+const googleConfigured = () => {
+  const id = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+  return id && !id.includes("PASTE_") && id !== "NOT_CONFIGURED";
+};
 
 export default function Login() {
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState("admin");
-
   const [form, setForm] = useState({
-    email: "admin@beunicorn.com",
-    password: "BeUnicorn123!",
+    email: "",
+    password: "",
   });
 
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const login = async (e) => {
+  const loginMember = async (e) => {
     e.preventDefault();
 
     try {
@@ -35,13 +40,13 @@ export default function Login() {
       const user = response.data.user;
       const token = response.data.token;
 
-      saveAuthSession(user, token);
-
       if (isAdminRole(user?.role)) {
-        navigate("/admin");
-      } else {
-        navigate("/member");
+        setError("Admin login is available only at /admin.");
+        return;
       }
+
+      saveMemberSession(user, token);
+      navigate("/member");
     } catch (err) {
       setError(
         err?.response?.data?.message ||
@@ -52,20 +57,30 @@ export default function Login() {
     }
   };
 
-  const useAdminLogin = () => {
-    setMode("admin");
-    setForm({
-      email: "admin@beunicorn.com",
-      password: "BeUnicorn123!",
-    });
-  };
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      setGoogleLoading(true);
+      setError("");
 
-  const useMemberLogin = () => {
-    setMode("member");
-    setForm({
-      email: "",
-      password: "",
-    });
+      const response = await api.post("/auth/google-login", {
+        credential: credentialResponse.credential,
+      });
+
+      const user = response.data.user;
+      const token = response.data.token;
+
+      if (isAdminRole(user?.role)) {
+        setError("Admin login is available only at /admin.");
+        return;
+      }
+
+      saveMemberSession(user, token);
+      navigate("/member");
+    } catch (err) {
+      setError(err?.response?.data?.message || "Google login failed.");
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -74,7 +89,7 @@ export default function Login() {
       <div className="absolute bottom-10 right-10 h-96 w-96 rounded-full bg-purple-700/20 blur-3xl" />
 
       <motion.form
-        onSubmit={login}
+        onSubmit={loginMember}
         initial={{ opacity: 0, y: 28, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         className="glass premium-shadow relative w-full max-w-md rounded-[2rem] p-8"
@@ -86,42 +101,14 @@ export default function Login() {
 
           <p className="mb-2 flex items-center justify-center gap-2 text-sm text-yellow-200">
             <Sparkles className="h-4 w-4" />
-            BeUnicorn Member Web App
+            BeUnicorn Member Portal
           </p>
 
-          <h1 className="text-3xl font-black text-white">
-            {mode === "admin" ? "Admin Login" : "Member Login"}
-          </h1>
+          <h1 className="text-3xl font-black text-white">Member Login</h1>
 
           <p className="mt-2 text-sm text-slate-400">
-            Admin manages operations. Member books rooms and views own bookings.
+            Login to book spaces and view your bookings.
           </p>
-        </div>
-
-        <div className="mb-4 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={useAdminLogin}
-            className={`rounded-2xl px-4 py-3 text-sm font-bold ${
-              mode === "admin"
-                ? "bg-yellow-300 text-black"
-                : "border border-white/10 bg-white/5 text-white"
-            }`}
-          >
-            Admin
-          </button>
-
-          <button
-            type="button"
-            onClick={useMemberLogin}
-            className={`rounded-2xl px-4 py-3 text-sm font-bold ${
-              mode === "member"
-                ? "bg-yellow-300 text-black"
-                : "border border-white/10 bg-white/5 text-white"
-            }`}
-          >
-            Member
-          </button>
         </div>
 
         <div className="space-y-4">
@@ -156,10 +143,36 @@ export default function Login() {
             className="flex w-full items-center justify-center gap-3 rounded-2xl bg-yellow-300 px-6 py-4 font-black text-black transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <LockKeyhole className="h-5 w-5" />
-            {loading ? "Logging in..." : "Login"}
+            {loading ? "Logging in..." : "Login as Member"}
             {!loading && <ArrowRight className="h-5 w-5" />}
           </button>
         </div>
+
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-xs text-slate-500">OR</span>
+          <div className="h-px flex-1 bg-white/10" />
+        </div>
+
+        {googleConfigured() ? (
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError("Google login failed.")}
+              useOneTap={false}
+            />
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center text-xs text-slate-400">
+            Google login placeholder added. Add VITE_GOOGLE_CLIENT_ID to enable.
+          </div>
+        )}
+
+        {googleLoading && (
+          <p className="mt-3 text-center text-sm text-yellow-200">
+            Signing in with Google...
+          </p>
+        )}
 
         <p className="mt-6 text-center text-sm text-slate-400">
           New member?{" "}
@@ -168,9 +181,9 @@ export default function Login() {
           </Link>
         </p>
 
-        <div className="mt-6 rounded-2xl bg-white/5 p-4 text-center text-xs text-slate-400">
-          Admin: admin@beunicorn.com
-        </div>
+        <p className="mt-4 text-center text-xs text-slate-500">
+          Admin access is available separately at /admin.
+        </p>
       </motion.form>
     </div>
   );

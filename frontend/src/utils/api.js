@@ -39,7 +39,9 @@ api.interceptors.response.use(
       if (path.startsWith("/admin")) {
         localStorage.removeItem(ADMIN_TOKEN_KEY);
         localStorage.removeItem(ADMIN_USER_KEY);
-      } else if (path.startsWith("/member")) {
+      }
+
+      if (path.startsWith("/member")) {
         localStorage.removeItem(MEMBER_TOKEN_KEY);
         localStorage.removeItem(MEMBER_USER_KEY);
       }

@@ -13,9 +13,9 @@ import {
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import AnimatedPage from "../components/AnimatedPage";
-import PremiumCard from "../components/PremiumCard";
-import api from "../utils/api";
+import AnimatedPage from "../../components/AnimatedPage";
+import PremiumCard from "../../components/PremiumCard";
+import api from "../../utils/api";
 
 const emptyRoomForm = {
   buildingId: "",
